@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, AlertCircle, Activity, HeartPulse, TrendingUp, Eye, Calendar, Sparkles } from 'lucide-react';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import UploadBox from '../components/UploadBox';
@@ -12,6 +13,7 @@ const Dashboard = () => {
   const [reports, setReports] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState('upload');
+  const { user, logout } = useAuth();
 
   useEffect(() => { fetchReports(); }, []);
 
@@ -51,11 +53,24 @@ const Dashboard = () => {
               Dashboard
               <span className="text-[10px] font-semibold bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-full border border-blue-500/15 uppercase tracking-wider">Overview</span>
             </h1>
-            <p className="text-slate-600 mt-1.5 text-sm">Welcome back. Here is the latest analysis of your medical data.</p>
+            <p className="text-slate-600 mt-1.5 text-sm">
+              Welcome back, {user ? user.full_name : 'User'}. Here is the latest analysis of your medical data.
+            </p>
+            {user && (
+              <p className="text-xs text-slate-500 mt-1">{user.email}</p>
+            )}
           </div>
-          <div className="glass-light px-4 py-2 rounded-xl flex items-center gap-2 text-xs text-slate-500">
-            <Calendar className="w-3.5 h-3.5" />
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          <div className="flex flex-col items-end gap-3">
+            <div className="glass-light px-4 py-2 rounded-xl flex items-center gap-2 text-xs text-slate-500">
+              <Calendar className="w-3.5 h-3.5" />
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <button 
+              onClick={logout}
+              className="text-xs px-4 py-1.5 rounded-lg border border-rose-500/30 text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </motion.header>
 

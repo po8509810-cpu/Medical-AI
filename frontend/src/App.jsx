@@ -1,6 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
 import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -11,20 +17,27 @@ import NutritionPlan from './pages/NutritionPlan';
 
 const App = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/reports" element={<PlaceholderPage />} />
-        <Route path="/analytics" element={<PlaceholderPage />} />
-        <Route path="/history" element={<PlaceholderPage />} />
-        <Route path="/compare" element={<Compare />} />
-        <Route path="/features" element={<Features />} />
-        <Route path="/nutrition/profile" element={<NutritionProfile />} />
-        <Route path="/nutrition/plan" element={<NutritionPlan />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><PlaceholderPage /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><PlaceholderPage /></ProtectedRoute>} />
+          <Route path="/history" element={<ProtectedRoute><PlaceholderPage /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><Compare /></ProtectedRoute>} />
+          <Route path="/nutrition/profile" element={<ProtectedRoute><NutritionProfile /></ProtectedRoute>} />
+          <Route path="/nutrition/plan" element={<ProtectedRoute><NutritionPlan /></ProtectedRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

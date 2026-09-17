@@ -12,6 +12,7 @@ from backend.models import User, Report, UploadStatus, NutritionProfile, Nutriti
 from backend.services.gemini_service import generate_nutrition_plan
 import json
 from dotenv import load_dotenv
+from sqlalchemy import or_
 
 load_dotenv()
 
@@ -60,38 +61,106 @@ def token_required(f):
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json
+    
+    # Validation
+    required_fields = ['email', 'password', 'username', 'full_name']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({'success': False, 'message': f'{field} is required'}), 400
+            
     db = SessionLocal()
-    if db.query(User).filter(User.email == data.get('email')).first():
+    
+    # Check existing user
+    existing_user = db.query(User).filter(
+        or_(User.email == data.get('email'), User.username == data.get('username'))
+    ).first()
+    
+    if existing_user:
         db.close()
-        return jsonify({'detail': 'Email already registered'}), 400
-        
+        if existing_user.email == data.get('email'):
+            return jsonify({'success': False, 'message': 'Email already registered'}), 409
+        if existing_user.username == data.get('username'):
+            return jsonify({'success': False, 'message': 'Username already taken'}), 409
+            
     hashed_pw = pwd_context.hash(data.get('password'))
-    new_user = User(email=data.get('email'), hashed_password=hashed_pw)
+    new_user = User(
+        email=data.get('email'), 
+        username=data.get('username'),
+        full_name=data.get('full_name'),
+        hashed_password=hashed_pw
+    )
+    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Optionally login immediately or just return success
     db.close()
-    return jsonify({'id': new_user.id, 'email': new_user.email})
+    return jsonify({
+        'success': True,
+        'message': 'Registration successful',
+        'data': {
+            'id': new_user.id, 
+            'email': new_user.email,
+            'username': new_user.username,
+            'full_name': new_user.full_name
+        }
+    }), 201
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    # Frontend sends form-urlencoded because of FastAPI defaults used earlier, we'll parse form
-    username = request.form.get('username') or request.json.get('username')
-    password = request.form.get('password') or request.json.get('password')
+    data = request.json
+    if not data:
+        data = request.form
+        
+    identifier = data.get('email') or data.get('username')
+    password = data.get('password')
+    
+    if not identifier or not password:
+        return jsonify({'success': False, 'message': 'Username/Email and password are required'}), 400
     
     db = SessionLocal()
-    user = db.query(User).filter(User.email == username).first()
-    db.close()
+    user = db.query(User).filter(
+        or_(User.email == identifier, User.username == identifier)
+    ).first()
     
     if not user or not pwd_context.verify(password, user.hashed_password):
-        return jsonify({'detail': 'Incorrect email or password'}), 401
+        db.close()
+        return jsonify({'success': False, 'message': 'Incorrect credentials'}), 401
         
     token = jwt.encode({
         'sub': user.email,
-        'exp': datetime.now(timezone.utc) + timedelta(minutes=30)
+        'exp': datetime.now(timezone.utc) + timedelta(days=1)
     }, app.config['SECRET_KEY'], algorithm="HS256")
     
-    return jsonify({'access_token': token, 'token_type': 'bearer'})
+    user_data = {
+        'id': user.id,
+        'email': user.email,
+        'username': user.username,
+        'full_name': user.full_name
+    }
+    db.close()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Login successful',
+        'token': token,
+        'user': user_data
+    }), 200
+
+@app.route('/api/auth/me', methods=['GET'])
+@token_required
+def get_me(current_user):
+    return jsonify({
+        'success': True,
+        'message': 'User details retrieved',
+        'data': {
+            'id': current_user.id,
+            'email': current_user.email,
+            'username': current_user.username,
+            'full_name': current_user.full_name
+        }
+    }), 200
 
 @app.route('/api/reports/upload', methods=['POST'])
 def upload_report():
